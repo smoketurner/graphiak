@@ -1,0 +1,36 @@
+# Netty-specific options.
+netty:
+
+  # Port to listen on for new metrics
+  listenPort: ${PORT:-2003}
+
+# Riak-specific options.
+riak:
+
+  nodes:
+    - 127.0.0.1:8087
+
+# HTTP-specific options.
+server:
+  type: simple
+  applicationContextPath: /
+  connector:
+    type: http
+    port: ${PORT:-8080}
+
+  requestLog:
+    appenders:
+      - type: console
+        timeZone: UTC
+        target: stdout
+
+logging:
+  level: INFO
+  loggers:
+    com.smoketurner.graphiak: DEBUG
+    com.basho.riak: INFO
+    io.netty: INFO
+  appenders:
+    - type: console
+      timeZone: UTC
+      target: stdout
