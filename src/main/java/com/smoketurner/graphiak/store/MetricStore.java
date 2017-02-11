@@ -87,7 +87,8 @@ public class MetricStore {
             if (e.getCause() instanceof RiakResponseException) {
                 final String message = e.getCause().getMessage();
                 if (message.endsWith("already_active")) {
-                    LOGGER.debug("Table already exists, skipping");
+                    LOGGER.debug("Table \"{}\" already exists, skipping",
+                            TABLE_NAME);
                     return;
                 }
             }
