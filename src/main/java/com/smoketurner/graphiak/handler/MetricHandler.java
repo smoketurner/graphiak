@@ -48,6 +48,7 @@ public final class MetricHandler
      */
     public MetricHandler(@Nonnull final MetricStore store) {
         this.store = Objects.requireNonNull(store);
+
         final MetricRegistry registry = SharedMetricRegistries
                 .getOrCreate("default");
         this.metricMeter = registry
@@ -72,7 +73,7 @@ public final class MetricHandler
         metrics.add(metric);
 
         if (metrics.size() >= MAX_METRICS) {
-            LOGGER.debug("Storing {} metrics in Riak", metrics.size());
+            LOGGER.debug("Storing {} metrics", metrics.size());
             store.store(metrics);
             metrics.clear();
         }
@@ -83,10 +84,9 @@ public final class MetricHandler
         LOGGER.trace("channelInactive");
 
         if (!metrics.isEmpty()) {
-            LOGGER.debug("Storing remaining {} metrics in Riak",
-                    metrics.size());
+            LOGGER.debug("Storing remaining {} metrics", metrics.size());
             store.store(metrics);
+            metrics.clear();
         }
-        metrics.clear();
     }
 }

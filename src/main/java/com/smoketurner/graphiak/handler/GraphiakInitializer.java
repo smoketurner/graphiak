@@ -53,14 +53,14 @@ public class GraphiakInitializer extends ChannelInitializer<SocketChannel> {
         p.addLast("idleStateHandler",
                 new IdleStateHandler(READER_IDLE_SECONDS, 0, 0));
 
-        // authenticate via an ACL and mutual certificates
+        // handle new connections and idle timeouts
         p.addLast("auth", new AuthHandler());
 
-        // break each data chunk by newlines and split out metric pieces
+        // break each data chunk by newlines and split out metrics
         p.addLast("line",
                 new GraphiteMetricDecoder(Ints.checkedCast(maxLength)));
 
         // batch up metrics and store in Riak
-        p.addLast("batcher", new MetricHandler(store));
+        p.addLast("metrics", new MetricHandler(store));
     }
 }

@@ -15,10 +15,10 @@
  */
 package com.smoketurner.graphiak.store;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ExecutionException;
+import java.util.stream.Collectors;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import org.slf4j.Logger;
@@ -27,6 +27,7 @@ import com.basho.riak.client.api.RiakClient;
 import com.basho.riak.client.api.commands.timeseries.Query;
 import com.basho.riak.client.api.commands.timeseries.Store;
 import com.basho.riak.client.core.netty.RiakResponseException;
+import com.basho.riak.client.core.query.timeseries.Row;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.SharedMetricRegistries;
 import com.codahale.metrics.Timer;
@@ -55,6 +56,8 @@ public class MetricStore {
      *            Riak client
      */
     public MetricStore(@Nonnull final RiakClient client) {
+        this.client = Objects.requireNonNull(client);
+
         final MetricRegistry registry = SharedMetricRegistries
                 .getOrCreate("default");
         this.fetchTimer = registry
@@ -63,8 +66,6 @@ public class MetricStore {
                 .timer(MetricRegistry.name(MetricStore.class, "store"));
         this.deleteTimer = registry
                 .timer(MetricRegistry.name(MetricStore.class, "delete"));
-
-        this.client = Objects.requireNonNull(client);
     }
 
     /**
@@ -101,15 +102,22 @@ public class MetricStore {
         }
     }
 
-    public void store(@Nullable final List<GraphiteMetric> metrics)
-            throws MetricStoreException {
+    /**
+     * Asynchronously stores one or more metrics in Riak TS
+     *
+     * @param metrics
+     *            list of metrics to store
+     */
+    public void store(@Nullable final List<GraphiteMetric> metrics) {
         if (metrics == null || metrics.isEmpty()) {
             return;
         }
 
-        Collections.sort(metrics);
-        final Store store = new Store.Builder(TABLE_NAME)
-                .withRows(converter.convertAll(metrics)).build();
+        final List<Row> rows = metrics.stream().sorted().map(converter::convert)
+                .collect(Collectors.toList());
+
+        final Store store = new Store.Builder(TABLE_NAME).withRows(rows)
+                .build();
 
         LOGGER.debug("Storing {} metrics (async)", metrics.size());
 
