@@ -15,6 +15,7 @@
  */
 package com.smoketurner.graphiak.store;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ExecutionException;
@@ -26,10 +27,11 @@ import com.basho.riak.client.api.RiakClient;
 import com.basho.riak.client.api.commands.timeseries.Query;
 import com.basho.riak.client.api.commands.timeseries.Store;
 import com.basho.riak.client.core.netty.RiakResponseException;
-import com.basho.riak.client.core.query.timeseries.Row;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.SharedMetricRegistries;
 import com.codahale.metrics.Timer;
+import com.smoketurner.graphiak.core.GraphiteMetric;
+import com.smoketurner.graphiak.core.GraphiteMetricRowConverter;
 import com.smoketurner.graphiak.exceptions.MetricStoreException;
 
 public class MetricStore {
@@ -37,6 +39,8 @@ public class MetricStore {
     private static final Logger LOGGER = LoggerFactory
             .getLogger(MetricStore.class);
     private static final String TABLE_NAME = "metrics";
+
+    private final GraphiteMetricRowConverter converter = new GraphiteMetricRowConverter();
     private final RiakClient client;
 
     // timers
@@ -97,16 +101,17 @@ public class MetricStore {
         }
     }
 
-    public void store(@Nullable final List<Row> rows)
+    public void store(@Nullable final List<GraphiteMetric> metrics)
             throws MetricStoreException {
-        if (rows == null || rows.isEmpty()) {
+        if (metrics == null || metrics.isEmpty()) {
             return;
         }
 
-        final Store store = new Store.Builder(TABLE_NAME).withRows(rows)
-                .build();
+        Collections.sort(metrics);
+        final Store store = new Store.Builder(TABLE_NAME)
+                .withRows(converter.convertAll(metrics)).build();
 
-        LOGGER.debug("Storing {} rows (async)", rows.size());
+        LOGGER.debug("Storing {} metrics (async)", metrics.size());
 
         try (Timer.Context context = storeTimer.time()) {
             client.executeAsync(store);

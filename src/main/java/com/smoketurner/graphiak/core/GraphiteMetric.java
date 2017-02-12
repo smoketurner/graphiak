@@ -17,9 +17,11 @@ package com.smoketurner.graphiak.core;
 
 import java.util.Objects;
 import javax.annotation.concurrent.Immutable;
+import com.google.common.collect.ComparisonChain;
+import com.google.common.collect.Ordering;
 
 @Immutable
-public final class GraphiteMetric {
+public final class GraphiteMetric implements Comparable<GraphiteMetric> {
 
     private final String path;
     private final double value;
@@ -77,5 +79,14 @@ public final class GraphiteMetric {
     @Override
     public String toString() {
         return String.format("%s %f %d", path, value, timestamp);
+    }
+
+    @Override
+    public int compareTo(GraphiteMetric that) {
+        return ComparisonChain.start()
+                .compare(this.timestamp, that.timestamp,
+                        Ordering.natural().reverse())
+                .compare(this.path, that.path).compare(this.value, that.value)
+                .result();
     }
 }

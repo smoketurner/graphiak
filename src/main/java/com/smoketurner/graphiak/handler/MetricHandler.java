@@ -21,12 +21,10 @@ import java.util.Objects;
 import javax.annotation.Nonnull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import com.basho.riak.client.core.query.timeseries.Row;
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.SharedMetricRegistries;
 import com.smoketurner.graphiak.core.GraphiteMetric;
-import com.smoketurner.graphiak.core.GraphiteMetricRowConverter;
 import com.smoketurner.graphiak.store.MetricStore;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
@@ -36,10 +34,9 @@ public final class MetricHandler
 
     private static final Logger LOGGER = LoggerFactory
             .getLogger(MetricHandler.class);
-    private static final int MAX_ROWS = 100;
+    private static final int MAX_METRICS = 100;
 
-    private final List<Row> rows = new ArrayList<>(MAX_ROWS);
-    private final GraphiteMetricRowConverter converter = new GraphiteMetricRowConverter();
+    private final List<GraphiteMetric> metrics = new ArrayList<>(MAX_METRICS);
     private final MetricStore store;
     private final Meter metricMeter;
 
@@ -68,28 +65,28 @@ public final class MetricHandler
         metricMeter.mark();
 
         if (metric == null) {
+            LOGGER.trace("received null metric");
             return;
         }
 
-        rows.add(converter.convert(metric));
+        metrics.add(metric);
 
-        if (rows.size() >= MAX_ROWS) {
-            LOGGER.debug("Storing {} rows in Riak", rows.size());
-            store.store(rows);
-            rows.clear();
+        if (metrics.size() >= MAX_METRICS) {
+            LOGGER.debug("Storing {} metrics in Riak", metrics.size());
+            store.store(metrics);
+            metrics.clear();
         }
     }
 
     @Override
     public void channelInactive(ChannelHandlerContext ctx) throws Exception {
-        if (LOGGER.isTraceEnabled()) {
-            LOGGER.trace("channelInactive");
-        }
+        LOGGER.trace("channelInactive");
 
-        if (!rows.isEmpty()) {
-            LOGGER.debug("Storing remaining {} rows in Riak", rows.size());
-            store.store(rows);
+        if (!metrics.isEmpty()) {
+            LOGGER.debug("Storing remaining {} metrics in Riak",
+                    metrics.size());
+            store.store(metrics);
         }
-        rows.clear();
+        metrics.clear();
     }
 }
