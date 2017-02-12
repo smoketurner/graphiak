@@ -25,19 +25,23 @@ import com.basho.riak.client.core.query.timeseries.Row;
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.SharedMetricRegistries;
+import com.smoketurner.graphiak.core.GraphiteMetric;
+import com.smoketurner.graphiak.core.GraphiteMetricRowConverter;
 import com.smoketurner.graphiak.store.MetricStore;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 
-public final class MetricHandler extends SimpleChannelInboundHandler<String> {
+public final class MetricHandler
+        extends SimpleChannelInboundHandler<GraphiteMetric> {
 
     private static final Logger LOGGER = LoggerFactory
             .getLogger(MetricHandler.class);
-
     private static final int MAX_ROWS = 100;
+
+    private final List<Row> rows = new ArrayList<>(MAX_ROWS);
+    private final GraphiteMetricRowConverter converter = new GraphiteMetricRowConverter();
     private final MetricStore store;
     private final Meter metricMeter;
-    private final List<Row> metrics = new ArrayList<>(MAX_ROWS);
 
     /**
      * Constructor
@@ -54,18 +58,38 @@ public final class MetricHandler extends SimpleChannelInboundHandler<String> {
     }
 
     @Override
-    public void channelRead0(ChannelHandlerContext ctx, String msg)
+    public void channelRead0(ChannelHandlerContext ctx, GraphiteMetric metric)
             throws Exception {
 
         if (LOGGER.isTraceEnabled()) {
-            LOGGER.trace("channelRead0: {}", msg);
+            LOGGER.trace("channelRead0: {}", metric);
         }
 
         metricMeter.mark();
+
+        if (metric == null) {
+            return;
+        }
+
+        rows.add(converter.convert(metric));
+
+        if (rows.size() >= MAX_ROWS) {
+            LOGGER.debug("Storing {} rows in Riak", rows.size());
+            store.store(rows);
+            rows.clear();
+        }
     }
 
     @Override
     public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+        if (LOGGER.isTraceEnabled()) {
+            LOGGER.trace("channelInactive");
+        }
 
+        if (!rows.isEmpty()) {
+            LOGGER.debug("Storing remaining {} rows in Riak", rows.size());
+            store.store(rows);
+        }
+        rows.clear();
     }
 }

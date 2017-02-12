@@ -13,28 +13,30 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.smoketurner.graphite.resources;
+package com.smoketurner.graphiak.resources;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import javax.ws.rs.core.Response;
 import org.junit.ClassRule;
 import org.junit.Test;
-import com.smoketurner.graphiak.resources.PingResource;
+import com.smoketurner.graphiak.resources.VersionResource;
 import io.dropwizard.testing.junit.ResourceTestRule;
 
-public class PingResourceTest {
+public class VersionResourceTest {
+
+    private static final String VERSION = "1.0.0-TEST";
 
     @ClassRule
     public static final ResourceTestRule resources = ResourceTestRule.builder()
-            .addResource(new PingResource()).build();
+            .addResource(new VersionResource(VERSION)).build();
 
     @Test
-    public void testGetPing() throws Exception {
-        final Response response = resources.client().target("/ping").request()
-                .get();
+    public void testVersion() throws Exception {
+        final Response response = resources.client().target("/version")
+                .request().get();
         final String actual = response.readEntity(String.class);
 
         assertThat(response.getStatus()).isEqualTo(200);
-        assertThat(actual).isEqualTo("pong");
+        assertThat(actual).isEqualTo(VERSION);
     }
 }

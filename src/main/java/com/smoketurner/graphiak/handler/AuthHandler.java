@@ -30,7 +30,9 @@ public final class AuthHandler extends ChannelInboundHandlerAdapter {
     public void userEventTriggered(ChannelHandlerContext ctx, Object evt)
             throws Exception {
 
-        LOGGER.trace("userEventTriggered: {}", evt.getClass().getName());
+        if (LOGGER.isTraceEnabled()) {
+            LOGGER.trace("userEventTriggered: {}", evt.getClass().getName());
+        }
 
         // if the channel has been idle, close it
         if (evt == IdleStateEvent.FIRST_READER_IDLE_STATE_EVENT) {

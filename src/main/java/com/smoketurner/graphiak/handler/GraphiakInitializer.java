@@ -15,16 +15,14 @@
  */
 package com.smoketurner.graphiak.handler;
 
-import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 import javax.annotation.Nonnull;
 import com.google.common.primitives.Ints;
+import com.smoketurner.graphiak.core.GraphiteMetricDecoder;
 import com.smoketurner.graphiak.store.MetricStore;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.socket.SocketChannel;
-import io.netty.handler.codec.LineBasedFrameDecoder;
-import io.netty.handler.codec.string.StringDecoder;
 import io.netty.handler.timeout.IdleStateHandler;
 
 public class GraphiakInitializer extends ChannelInitializer<SocketChannel> {
@@ -58,12 +56,9 @@ public class GraphiakInitializer extends ChannelInitializer<SocketChannel> {
         // authenticate via an ACL and mutual certificates
         p.addLast("auth", new AuthHandler());
 
-        // break each data chunk by newlines
-        p.addLast("line", new LineBasedFrameDecoder(Ints.checkedCast(maxLength),
-                true, true));
-
-        // convert each data chunk into a string
-        p.addLast("decoder", new StringDecoder(StandardCharsets.UTF_8));
+        // break each data chunk by newlines and split out metric pieces
+        p.addLast("line",
+                new GraphiteMetricDecoder(Ints.checkedCast(maxLength)));
 
         // batch up metrics and store in Riak
         p.addLast("batcher", new MetricHandler(store));

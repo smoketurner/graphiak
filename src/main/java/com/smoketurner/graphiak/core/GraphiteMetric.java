@@ -17,17 +17,27 @@ package com.smoketurner.graphiak.core;
 
 import java.util.Objects;
 import javax.annotation.concurrent.Immutable;
-import com.google.common.base.MoreObjects;
 
 @Immutable
-public final class Metric {
+public final class GraphiteMetric {
 
     private final String path;
     private final double value;
     private final long timestamp;
 
-    public Metric(String path, double value, long timestamp) {
-        this.path = path;
+    /**
+     * Constructor
+     *
+     * @param path
+     *            Metric path
+     * @param value
+     *            Metric value
+     * @param timestamp
+     *            Metric timestamp in epoch seconds
+     */
+    public GraphiteMetric(final String path, final double value,
+            final long timestamp) {
+        this.path = Objects.requireNonNull(path);
         this.value = value;
         this.timestamp = timestamp;
     }
@@ -40,7 +50,7 @@ public final class Metric {
         return value;
     }
 
-    public long getTimestamp() {
+    public long timestamp() {
         return timestamp;
     }
 
@@ -53,7 +63,7 @@ public final class Metric {
             return false;
         }
 
-        final Metric other = (Metric) obj;
+        final GraphiteMetric other = (GraphiteMetric) obj;
         return Objects.equals(path, other.path)
                 && Objects.equals(value, other.value)
                 && Objects.equals(timestamp, other.timestamp);
@@ -66,7 +76,6 @@ public final class Metric {
 
     @Override
     public String toString() {
-        return MoreObjects.toStringHelper(this).add("path", path)
-                .add("value", value).add("timestamp", timestamp).toString();
+        return String.format("%s %f %d", path, value, timestamp);
     }
 }
