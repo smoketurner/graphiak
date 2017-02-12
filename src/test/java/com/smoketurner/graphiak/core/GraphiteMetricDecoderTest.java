@@ -16,28 +16,76 @@
 package com.smoketurner.graphiak.core;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import java.nio.charset.StandardCharsets;
+import static org.assertj.core.api.Assertions.failBecauseExceptionWasNotThrown;
 import org.junit.Test;
-import io.netty.buffer.ByteBuf;
-import io.netty.buffer.Unpooled;
-import io.netty.channel.embedded.EmbeddedChannel;
 
 public class GraphiteMetricDecoderTest {
 
     @Test
     public void testDecode() {
-        final GraphiteMetric expected = new GraphiteMetric("test", 4,
+        final GraphiteMetric expected = new GraphiteMetric("test", 4.0,
                 1486870573L);
 
-        final ByteBuf buf = Unpooled.buffer();
-        buf.writeCharSequence("test 4 1486870573", StandardCharsets.UTF_8);
+        final GraphiteMetric actual = GraphiteMetricDecoder
+                .decode("test 4 1486870573");
+        assertThat(actual).isEqualTo(expected);
+    }
 
-        final EmbeddedChannel channel = new EmbeddedChannel(
-                new GraphiteMetricDecoder(100));
-        assertThat(channel.writeInbound(buf)).isTrue();
-        assertThat(channel.finish()).isTrue();
+    @Test
+    public void testDecodeNull() {
+        final GraphiteMetric actual = GraphiteMetricDecoder.decode(null);
+        assertThat(actual).isNull();
+    }
 
-        final GraphiteMetric actual = channel.readInbound();
+    @Test
+    public void testDecodeEmpty() {
+        final GraphiteMetric actual = GraphiteMetricDecoder.decode("");
+        assertThat(actual).isNull();
+    }
+
+    @Test
+    public void testDecodeMissingValueAndTimestamp() {
+        final GraphiteMetric actual = GraphiteMetricDecoder.decode("test");
+        assertThat(actual).isNull();
+    }
+
+    @Test
+    public void testDecodeMissingTimestamp() {
+        final GraphiteMetric actual = GraphiteMetricDecoder.decode("test 4");
+        assertThat(actual).isNull();
+    }
+
+    @Test
+    public void testDecodeInvalidValue() {
+        final GraphiteMetric actual = GraphiteMetricDecoder.decode("test test");
+        assertThat(actual).isNull();
+    }
+
+    @Test
+    public void testDecodeInvalidTimestamp() {
+        try {
+            GraphiteMetricDecoder.decode("test 4 test");
+            failBecauseExceptionWasNotThrown(NumberFormatException.class);
+        } catch (NumberFormatException e) {
+        }
+    }
+
+    @Test
+    public void testDecodeInvalidValueAndTimestamp() {
+        try {
+            GraphiteMetricDecoder.decode("test test test");
+            failBecauseExceptionWasNotThrown(NumberFormatException.class);
+        } catch (NumberFormatException e) {
+        }
+    }
+
+    @Test
+    public void testDecodeExtraWhitespace() {
+        final GraphiteMetric expected = new GraphiteMetric("test", 4.0,
+                1486870573L);
+
+        final GraphiteMetric actual = GraphiteMetricDecoder
+                .decode("    test     4     1486870573     ");
         assertThat(actual).isEqualTo(expected);
     }
 }
