@@ -15,12 +15,19 @@
  */
 package com.smoketurner.graphiak;
 
+import java.util.EnumSet;
 import javax.annotation.Nonnull;
+import javax.servlet.DispatcherType;
+import javax.servlet.FilterRegistration;
+import org.eclipse.jetty.servlets.CrossOriginFilter;
 import com.basho.riak.client.api.RiakClient;
 import com.smoketurner.dropwizard.riak.RiakBundle;
 import com.smoketurner.dropwizard.riak.RiakFactory;
 import com.smoketurner.graphiak.config.GraphiakConfiguration;
 import com.smoketurner.graphiak.managed.MetricStoreManager;
+import com.smoketurner.graphiak.resources.DashboardResource;
+import com.smoketurner.graphiak.resources.EventsResource;
+import com.smoketurner.graphiak.resources.MetricsResource;
 import com.smoketurner.graphiak.resources.PingResource;
 import com.smoketurner.graphiak.resources.VersionResource;
 import com.smoketurner.graphiak.store.MetricStore;
@@ -62,6 +69,12 @@ public class GraphiakApplication extends Application<GraphiakConfiguration> {
     public void run(@Nonnull final GraphiakConfiguration configuration,
             @Nonnull final Environment environment) throws Exception {
 
+        // Enable CORS
+        final FilterRegistration.Dynamic cors = environment.servlets()
+                .addFilter("cors", CrossOriginFilter.class);
+        cors.addMappingForUrlPatterns(EnumSet.allOf(DispatcherType.class), true,
+                "/*");
+
         // get Riak client
         final RiakClient client = configuration.getRiak().build();
 
@@ -72,6 +85,9 @@ public class GraphiakApplication extends Application<GraphiakConfiguration> {
         configuration.getNetty().build(environment, store);
 
         // Resources
+        environment.jersey().register(new DashboardResource());
+        environment.jersey().register(new MetricsResource(store));
+        environment.jersey().register(new EventsResource());
         environment.jersey().register(new PingResource());
         environment.jersey().register(new VersionResource());
     }

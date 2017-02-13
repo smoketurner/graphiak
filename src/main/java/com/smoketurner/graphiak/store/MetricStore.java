@@ -21,12 +21,14 @@ import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import org.joda.time.DateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.basho.riak.client.api.RiakClient;
 import com.basho.riak.client.api.commands.timeseries.Query;
 import com.basho.riak.client.api.commands.timeseries.Store;
 import com.basho.riak.client.core.netty.RiakResponseException;
+import com.basho.riak.client.core.query.timeseries.QueryResult;
 import com.basho.riak.client.core.query.timeseries.Row;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.SharedMetricRegistries;
@@ -34,18 +36,21 @@ import com.codahale.metrics.Timer;
 import com.smoketurner.graphiak.core.GraphiteMetric;
 import com.smoketurner.graphiak.core.GraphiteMetricRowConverter;
 import com.smoketurner.graphiak.exceptions.MetricStoreException;
+import io.dropwizard.util.Duration;
 
 public class MetricStore {
 
     private static final Logger LOGGER = LoggerFactory
             .getLogger(MetricStore.class);
     private static final String TABLE_NAME = "metrics";
+    private static final long NANOS_IN_MILLIS = Duration.nanoseconds(1)
+            .toMilliseconds();
 
     private final GraphiteMetricRowConverter converter = new GraphiteMetricRowConverter();
     private final RiakClient client;
 
     // timers
-    private final Timer fetchTimer;
+    private final Timer queryTimer;
     private final Timer storeTimer;
     private final Timer deleteTimer;
 
@@ -60,8 +65,8 @@ public class MetricStore {
 
         final MetricRegistry registry = SharedMetricRegistries
                 .getOrCreate("default");
-        this.fetchTimer = registry
-                .timer(MetricRegistry.name(MetricStore.class, "fetch"));
+        this.queryTimer = registry
+                .timer(MetricRegistry.name(MetricStore.class, "query"));
         this.storeTimer = registry
                 .timer(MetricRegistry.name(MetricStore.class, "store"));
         this.deleteTimer = registry
@@ -100,6 +105,64 @@ public class MetricStore {
             LOGGER.error("Unable to create table", e);
             throw new MetricStoreException(e);
         }
+    }
+
+    /**
+     * Query a single metric path between a given time range
+     *
+     * @param path
+     *            Metric path
+     * @param startTime
+     *            Start time
+     * @param endTime
+     *            End time
+     * @return List of metrics
+     * @throws MetricStoreException
+     *             if unable to query
+     */
+    public List<GraphiteMetric> fetch(@Nonnull final String path,
+            @Nonnull final DateTime startTime, @Nonnull final DateTime endTime)
+            throws MetricStoreException {
+
+        Objects.requireNonNull(path);
+        Objects.requireNonNull(startTime);
+        Objects.requireNonNull(endTime);
+
+        if (path.isEmpty()) {
+            throw new MetricStoreException("Path not provided");
+        }
+        if (endTime.getMillis() <= startTime.getMillis()) {
+            throw new MetricStoreException(
+                    "endTime must be greater than startTime");
+        }
+
+        final String queryText = String.format(
+                "SELECT path, time, value FROM %s WHERE time >= %d AND time < %d AND path = '%s'",
+                TABLE_NAME, startTime.getMillis(), endTime.getMillis(), path);
+
+        final Query query = new Query.Builder(queryText).build();
+
+        final QueryResult result;
+        try (Timer.Context context = queryTimer.time()) {
+            result = client.execute(query);
+
+            final long duration = context.stop();
+            LOGGER.debug("Query returned {} rows in {}ms",
+                    result.getRowsCount(), duration / NANOS_IN_MILLIS);
+
+        } catch (ExecutionException e) {
+            LOGGER.error("Unable to execute query: " + queryText, e);
+            throw new MetricStoreException(e);
+        } catch (InterruptedException e) {
+            LOGGER.warn("Interrupted executing query: " + queryText, e);
+            Thread.currentThread().interrupt();
+            throw new MetricStoreException(e);
+        }
+
+        final List<GraphiteMetric> metrics = result.getRowsCopy()
+                .parallelStream().map(row -> converter.reverse().convert(row))
+                .sorted().collect(Collectors.toList());
+        return metrics;
     }
 
     /**
