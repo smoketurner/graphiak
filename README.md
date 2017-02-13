@@ -1,7 +1,7 @@
 Graphiak
 ========
 [![Build Status](https://travis-ci.org/smoketurner/graphiak.svg?branch=master)](https://travis-ci.org/smoketurner/graphiak)
-[![Coverage Status](https://coveralls.io/repos/smoketurner/graphiak/badge.svg)](https://coveralls.io/r/smoketurner/graphiak)
+[![Coverage Status](https://coveralls.io/repos/github/smoketurner/graphiak/badge.svg?branch=master)](https://coveralls.io/github/smoketurner/graphiak?branch=master)
 [![Maven Central](https://img.shields.io/maven-central/v/com.smoketurner.graphiak/graphiak-application.svg?style=flat-square)](https://maven-badges.herokuapp.com/maven-central/com.smoketurner.graphiak/graphiak-application/)
 [![GitHub license](https://img.shields.io/github/license/smoketurner/graphiak.svg?style=flat-square)](https://github.com/smoketurner/graphiak/tree/master)
 
