@@ -73,7 +73,6 @@ public final class MetricHandler
         metrics.add(metric);
 
         if (metrics.size() >= MAX_METRICS) {
-            LOGGER.debug("Storing {} metrics", metrics.size());
             store.store(metrics);
             metrics.clear();
         }
@@ -81,10 +80,7 @@ public final class MetricHandler
 
     @Override
     public void channelInactive(ChannelHandlerContext ctx) throws Exception {
-        LOGGER.trace("channelInactive");
-
         if (!metrics.isEmpty()) {
-            LOGGER.debug("Storing remaining {} metrics", metrics.size());
             store.store(metrics);
             metrics.clear();
         }

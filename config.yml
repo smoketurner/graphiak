@@ -31,7 +31,7 @@ server:
 logging:
   level: INFO
   loggers:
-    com.smoketurner.graphiak: DEBUG
+    com.smoketurner.graphiak: INFO
     com.basho.riak: INFO
     io.netty: INFO
   appenders:
