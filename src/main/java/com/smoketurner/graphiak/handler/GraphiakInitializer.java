@@ -25,11 +25,13 @@ import io.netty.channel.ChannelPipeline;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.handler.timeout.IdleStateHandler;
 
-public class GraphiakInitializer extends ChannelInitializer<SocketChannel> {
+public final class GraphiakInitializer
+        extends ChannelInitializer<SocketChannel> {
 
     private static final int READER_IDLE_SECONDS = 60;
+    private final AuthHandler authHandler = new AuthHandler();
     private final MetricStore store;
-    private final long maxLength;
+    private final int maxLength;
 
     /**
      * Constructor
@@ -42,7 +44,7 @@ public class GraphiakInitializer extends ChannelInitializer<SocketChannel> {
     public GraphiakInitializer(@Nonnull final MetricStore store,
             final long maxLength) {
         this.store = Objects.requireNonNull(store);
-        this.maxLength = maxLength;
+        this.maxLength = Ints.checkedCast(maxLength);
     }
 
     @Override
@@ -54,13 +56,12 @@ public class GraphiakInitializer extends ChannelInitializer<SocketChannel> {
                 new IdleStateHandler(READER_IDLE_SECONDS, 0, 0));
 
         // handle new connections and idle timeouts
-        p.addLast("auth", new AuthHandler());
+        p.addLast("auth", authHandler);
 
         // break each data chunk by newlines and split out metrics
-        p.addLast("line",
-                new GraphiteMetricDecoder(Ints.checkedCast(maxLength)));
+        p.addLast("line", new GraphiteMetricDecoder(maxLength));
 
-        // batch up metrics and store in Riak
+        // batch up metrics and store
         p.addLast("metrics", new MetricHandler(store));
     }
 }
