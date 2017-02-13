@@ -33,6 +33,6 @@ public class GraphiteMetricRowConverter extends Converter<GraphiteMetric, Row> {
     protected GraphiteMetric doBackward(Row row) {
         final List<Cell> cells = row.getCellsCopy();
         return new GraphiteMetric(cells.get(0).getVarcharAsUTF8String(),
-                cells.get(1).getDouble(), cells.get(2).getTimestamp() / 1000);
+                cells.get(2).getDouble(), cells.get(1).getTimestamp() / 1000);
     }
 }
